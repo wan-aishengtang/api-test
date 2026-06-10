@@ -133,7 +133,7 @@ jobs:
           repository = os.environ.get("REPOSITORY", "").strip()
 
           lines = [
-              "### API Latest Report",
+              "### 接口自动化报告",
               f"- Repo: `{repository}`",
               f"- Run Number: `{run_number}`",
               f"- Status: `{report_status}`",
@@ -144,7 +144,7 @@ jobs:
           payload = {
               "msgtype": "markdown",
               "markdown": {
-                  "title": "API Latest Report",
+                  "title": "接口自动化报告",
                   "text": "\n".join(lines),
               },
           }
