@@ -1,0 +1,216 @@
+auth_guest_token_cases:
+  - case_name: "签发游客 Token"
+    expect_http_status: 200
+    expect_code: 200
+
+auth_login_cases:
+  - case_name: "正式模式登录并刷新 Token"
+    email: "admin02@test.com"
+    password: "123456789"
+    expect_http_status: 200
+    expect_code: 200
+
+auth_logout_cases:
+  - case_name: "正式模式退出登录后 refresh 失效"
+    expect_http_status: 200
+    expect_code: 200
+    refresh_expect_http_status: 401
+    refresh_expect_code: 4015
+
+public_check_email_cases:
+  - case_name: "检查已注册邮箱"
+    email: "2711771004@qq.com"
+    expect_http_status: 200
+    expect_code: 1001
+  - case_name: "检查未注册邮箱"
+    email: "__RUNTIME_UNREGISTERED_EMAIL__"
+    expect_http_status: 200
+    expect_code: 200
+
+public_send_register_code_cases:
+  - case_name: "注册验证码接口校验已注册邮箱"
+    email: "2711771004@qq.com"
+    expect_http_status: 200
+    expect_code: 410
+
+public_send_reset_code_cases:
+  - case_name: "重置验证码接口校验未注册邮箱"
+    email: "__RUNTIME_UNREGISTERED_EMAIL__"
+    expect_http_status: 200
+    expect_code: 404
+
+public_verify_code_negative_cases:
+  - case_name: "注册验证码校验失败"
+    email: "__RUNTIME_UNREGISTERED_EMAIL__"
+    code: "000000"
+    type: "register"
+    expect_http_status: 200
+    expect_code: 400
+  - case_name: "重置验证码校验失败"
+    email: "2711771004@qq.com"
+    code: "000000"
+    type: "reset"
+    expect_http_status: 200
+    expect_code: 400
+
+public_register_negative_cases:
+  - case_name: "注册接口拦截无效 verify_token"
+    email: "__RUNTIME_UNREGISTERED_EMAIL__"
+    password: "Abcd1234"
+    verify_token: "invalid-register-token"
+    expect_http_status: 403
+    expect_code: 403
+
+public_reset_password_negative_cases:
+  - case_name: "重置密码接口拦截无效 verify_token"
+    email: "2711771004@qq.com"
+    new_password: "Abcd1234"
+    verify_token: "invalid-reset-token"
+    expect_http_status: 403
+    expect_code: 403
+
+formal_location_search_cases:
+  - case_name: "正式模式搜索北京地点"
+    keyword: "北京"
+    expect_http_status: 200
+    expect_code: 200
+  - case_name: "正式模式搜索杭州地点"
+    keyword: "杭州"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_realtime_weather_cases:
+  - case_name: "正式模式查询北京实时天气"
+    location: "39.9042:116.4074"
+    expect_http_status: 200
+    expect_code: 200
+  - case_name: "正式模式查询杭州实时天气"
+    location: "30.16293:120.27069"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_history_weather_cases:
+  - case_name: "正式模式查询杭州历史天气"
+    city: "杭州"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_predict_weather_cases:
+  - case_name: "正式模式查询杭州天气预测"
+    city: "杭州"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_user_profile_cases:
+  - case_name: "正式模式获取当前登录用户信息"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_profile_save_cases:
+  - case_name: "正式模式保存当前用户资料"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_check_username_cases:
+  - case_name: "正式模式校验当前用户名可用性"
+    expect_http_status: 200
+    expect_code: 200
+
+formal_upload_avatar_cases:
+  - case_name: "正式模式上传头像"
+    expect_http_status: 200
+    expect_code: 200
+
+guest_location_search_cases:
+  - case_name: "游客模式搜索北京地点"
+    keyword: "北京"
+    expect_http_status: 200
+    expect_code: 200
+
+guest_realtime_weather_cases:
+  - case_name: "游客模式查询北京实时天气"
+    location: "39.9042:116.4074"
+    expect_http_status: 200
+    expect_code: 200
+  - case_name: "游客模式查询杭州实时天气"
+    location: "30.16293:120.27069"
+    expect_http_status: 200
+    expect_code: 200
+
+guest_history_weather_cases:
+  - case_name: "游客模式查询杭州历史天气"
+    city: "杭州"
+    expect_http_status: 200
+    expect_code: 200
+
+guest_predict_weather_cases:
+  - case_name: "游客模式查询杭州天气预测"
+    city: "杭州"
+    expect_http_status: 200
+    expect_code: 200
+
+negative_cases:
+  - case_name: "实时天气缺少鉴权"
+    api: "weather_now"
+    location: "39.9042:116.4074"
+    expect_http_status_any: [401, 403]
+    expect_code_any: [401, 4010, 4016, 403]
+  - case_name: "地点搜索缺少关键参数"
+    api: "location_search"
+    keyword: ""
+    expect_http_status_any: [401, 403]
+    expect_code_any: [401, 4010, 4016, 403]
+  - case_name: "游客 Token 接口缺少签名"
+    api: "guest_token_without_signature"
+    expect_http_status: 403
+    expect_code: 403
+  - case_name: "注册验证码接口缺少签名"
+    api: "register_code_without_signature"
+    email: "2711771004@qq.com"
+    expect_http_status: 200
+    expect_code: 403
+
+admin_forbidden_cases:
+  - case_name: "普通用户无权查看管理员用户列表"
+    api: "admin_user_list"
+    expect_http_status: 403
+    expect_status: "error"
+  - case_name: "普通用户无权查看管理员流量统计"
+    api: "admin_traffic_stats"
+    expect_http_status: 403
+    expect_status: "error"
+  - case_name: "普通用户无权查看管理员服务器状态"
+    api: "admin_server_status"
+    expect_http_status: 403
+    expect_status: "error"
+  - case_name: "普通用户无权编辑管理员用户"
+    api: "admin_edit_user"
+    target_user_id: 1
+    expect_http_status: 403
+    expect_status: "error"
+  - case_name: "普通用户无权删除管理员用户"
+    api: "admin_delete_user"
+    target_user_id: 1
+    expect_http_status: 403
+    expect_status: "error"
+  - case_name: "普通用户无权批量删除管理员用户"
+    api: "admin_batch_delete_users"
+    ids: [1]
+    expect_http_status: 403
+    expect_status: "error"
+
+admin_success_list_cases:
+  - case_name: "管理员查看用户列表"
+    page: 1
+    page_size: 10
+    expect_http_status: 200
+    expect_status: "success"
+
+admin_success_system_cases:
+  - case_name: "管理员查看流量统计"
+    days: 7
+    expect_http_status: 200
+    expect_status: "success"
+  - case_name: "管理员查看服务器状态"
+    expect_http_status: 200
+    expect_status: "success"

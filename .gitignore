@@ -1,0 +1,11 @@
+.venv/
+.idea/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+report/html/
+report/xml/
+report/archive/
+report/latest-report.txt
+
