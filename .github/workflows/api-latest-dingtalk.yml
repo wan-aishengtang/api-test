@@ -43,6 +43,47 @@ jobs:
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
+      - name: Restore previous Allure history from GitHub Pages
+        env:
+          PAGES_HISTORY_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/history
+        shell: bash
+        run: |
+          mkdir -p report/html/history
+          python - <<'PY'
+          import os
+          import pathlib
+          import urllib.error
+          import urllib.request
+
+          base_url = os.environ["PAGES_HISTORY_BASE_URL"].rstrip("/")
+          target_dir = pathlib.Path("report/html/history")
+          target_dir.mkdir(parents=True, exist_ok=True)
+
+          history_files = [
+              "history.json",
+              "history-trend.json",
+              "duration-trend.json",
+              "retry-trend.json",
+              "categories-trend.json",
+          ]
+
+          downloaded = []
+          for filename in history_files:
+              url = f"{base_url}/{filename}"
+              target_path = target_dir / filename
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      target_path.write_bytes(response.read())
+                  downloaded.append(filename)
+              except urllib.error.URLError:
+                  pass
+
+          if downloaded:
+              print("Restored history files:", ", ".join(downloaded))
+          else:
+              print("No previous Allure history found on GitHub Pages; continuing with a fresh history baseline.")
+          PY
+
       - name: Run API tests and generate latest Allure report
         id: run_tests
         env:
