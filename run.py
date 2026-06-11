@@ -1,4 +1,5 @@
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -25,11 +26,13 @@ from config import settings
 
 
 def ensure_results_dir():
+    """确保 Allure 原始结果目录和历史归档目录存在。"""
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     ARCHIVE_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 def mask_email(email):
+    """对邮箱做简单脱敏，避免公开报告直接暴露完整账号。"""
     if not email or "@" not in str(email):
         return "***"
 
@@ -42,7 +45,7 @@ def mask_email(email):
 
 
 def restore_history():
-    """把上一次 HTML 报告里的 history 复制回 allure-results，供趋势图继续累计。"""
+    """把上一份 HTML 报告中的 history 拷回 allure-results，保留趋势图。"""
     if not HISTORY_SOURCE_DIR.exists():
         return
 
@@ -52,7 +55,7 @@ def restore_history():
 
 
 def write_environment_file():
-    """写入 Allure 环境面板，展示当前测试运行使用的关键配置。"""
+    """写入 Allure 环境信息面板。"""
     env_lines = [
         f"base_url={settings.BASE_URL}",
         f"user_email={mask_email(settings.USER_EMAIL)}",
@@ -61,6 +64,8 @@ def write_environment_file():
         f"allow_server_errors={settings.ALLOW_SERVER_ERRORS}",
         f"allow_network_errors={settings.ALLOW_NETWORK_ERRORS}",
         f"use_system_proxy={settings.USE_SYSTEM_PROXY}",
+        f"verify_ssl={settings.VERIFY_SSL}",
+        f"ca_bundle={settings.CA_BUNDLE or '(system default)'}",
         f"enable_email_sending_tests={settings.ENABLE_EMAIL_SENDING_TESTS}",
         f"enable_mutation_tests={settings.ENABLE_MUTATION_TESTS}",
         f"enable_upload_tests={settings.ENABLE_UPLOAD_TESTS}",
@@ -76,15 +81,30 @@ def write_environment_file():
 
 
 def write_executor_file():
-    """写入 Allure 运行器面板，标注本次报告来自本地执行。"""
+    """写入运行器信息，区分本地执行和 GitHub Actions。"""
     now = datetime.now()
-    executor_payload = {
-        "name": "Local PowerShell",
-        "type": "local",
-        "buildName": f"API-Test {now.strftime('%Y-%m-%d %H:%M:%S')}",
-        "buildOrder": int(now.strftime("%Y%m%d%H%M%S")),
-        "reportName": f"API-Test Allure Report {now.strftime('%Y/%m/%d %H:%M:%S')}",
-    }
+    if os.getenv("GITHUB_ACTIONS", "").lower() == "true":
+        run_number = os.getenv("GITHUB_RUN_NUMBER") or now.strftime("%Y%m%d%H%M%S")
+        repository = os.getenv("GITHUB_REPOSITORY", "unknown")
+        server_url = os.getenv("GITHUB_SERVER_URL", "https://github.com")
+        run_id = os.getenv("GITHUB_RUN_ID", "")
+        executor_payload = {
+            "name": "GitHub Actions",
+            "type": "github",
+            "buildName": f"{repository} #{run_number}",
+            "buildOrder": int(run_number),
+            "buildUrl": f"{server_url}/{repository}/actions/runs/{run_id}" if run_id else "",
+            "reportName": f"API-Test Allure Report {now.strftime('%Y/%m/%d %H:%M:%S')}",
+        }
+    else:
+        executor_payload = {
+            "name": "Local PowerShell",
+            "type": "local",
+            "buildName": f"API-Test {now.strftime('%Y-%m-%d %H:%M:%S')}",
+            "buildOrder": int(now.strftime("%Y%m%d%H%M%S")),
+            "reportName": f"API-Test Allure Report {now.strftime('%Y/%m/%d %H:%M:%S')}",
+        }
+
     (RESULTS_DIR / "executor.json").write_text(
         json.dumps(executor_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -92,8 +112,13 @@ def write_executor_file():
 
 
 def write_categories_file():
-    """定义失败分类规则，方便报告里把常见问题按类型聚合。"""
+    """定义失败分类规则，方便 Allure 聚合查看问题类型。"""
     categories_payload = [
+        {
+            "name": "Cloudflare 拦截",
+            "matchedStatuses": ["skipped"],
+            "messageRegex": ".*(Cloudflare|challenge.cloudflare.com|Just a moment|人机校验).*",
+        },
         {
             "name": "鉴权/权限问题",
             "matchedStatuses": ["failed"],
@@ -127,7 +152,7 @@ def write_categories_file():
 
 
 def archive_current_report(run_at):
-    """把本次生成的 xml/html 结果按时间戳归档，避免后续执行覆盖历史报告。"""
+    """把本次 xml/html 结果按时间归档，避免后续执行覆盖历史报告。"""
     run_id = run_at.strftime("%Y%m%d-%H%M%S")
     archive_dir = ARCHIVE_ROOT / run_id
     archive_xml_dir = archive_dir / "xml"
@@ -164,7 +189,7 @@ def archive_current_report(run_at):
 
 
 def write_archive_index():
-    """生成历史报告索引页，方便长期查看每次执行快照。"""
+    """生成历史报告索引页，便于长期查看每次执行快照。"""
     rows = []
     for meta_file in sorted(ARCHIVE_ROOT.glob("*/meta.json"), reverse=True):
         try:
@@ -240,7 +265,7 @@ def write_archive_index():
 </head>
 <body>
   <h1>API-Test 历史报告索引</h1>
-  <p class="hint">每次执行 run.py 后，最新报告仍保存在 report/html，同时会在本目录自动生成一份时间戳归档。</p>
+  <p class="hint">每次执行 run.py 后，最新报告仍保存在 report/html，同时会在本目录自动生成一份带时间戳的归档。</p>
   <table>
     <thead>
       <tr>

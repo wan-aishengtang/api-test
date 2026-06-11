@@ -3,7 +3,7 @@ name: API Latest Report To DingTalk
 on:
   workflow_dispatch:
   schedule:
-    - cron: "47 8 * * *"
+    - cron: "9 8 * * *"
       timezone: "Asia/Shanghai"
 
 permissions:
@@ -51,6 +51,8 @@ jobs:
           WEATHER_USER_PASSWORD: ${{ secrets.WEATHER_USER_PASSWORD }}
           WEATHER_ADMIN_EMAIL: ${{ secrets.WEATHER_ADMIN_EMAIL }}
           WEATHER_ADMIN_PASSWORD: ${{ secrets.WEATHER_ADMIN_PASSWORD }}
+          WEATHER_VERIFY_SSL: "false"
+          WEATHER_CA_BUNDLE: ${{ vars.WEATHER_CA_BUNDLE }}
         shell: bash
         run: |
           set +e
