@@ -3,7 +3,7 @@ name: API Latest Report To DingTalk
 on:
   workflow_dispatch:
   schedule:
-    - cron: "9 8 * * *"
+    - cron: "0 6 * * *"
       timezone: "Asia/Shanghai"
 
 permissions:
