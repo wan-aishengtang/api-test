@@ -13,7 +13,28 @@ def as_bool(value):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-BASE_URL = os.getenv("WEATHER_API_BASE_URL", "https://www.weaquery.com").rstrip("/")
+def get_str_env(name, default=""):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    value = value.strip()
+    return value if value else default
+
+
+DEFAULT_DOMAIN_BASE_URL = get_str_env("WEATHER_DOMAIN_BASE_URL", "https://www.weaquery.com").rstrip("/")
+DEFAULT_SOURCE_BASE_URL = get_str_env("WEATHER_SOURCE_BASE_URL", "https://115.120.243.153").rstrip("/")
+API_TARGET_MODE = get_str_env("WEATHER_API_TARGET_MODE", "domain").lower()
+EXPLICIT_BASE_URL = get_str_env("WEATHER_API_BASE_URL", "").rstrip("/")
+
+if EXPLICIT_BASE_URL:
+    BASE_URL = EXPLICIT_BASE_URL
+    ACTIVE_TARGET_MODE = "explicit"
+elif API_TARGET_MODE == "source":
+    BASE_URL = DEFAULT_SOURCE_BASE_URL
+    ACTIVE_TARGET_MODE = "source"
+else:
+    BASE_URL = DEFAULT_DOMAIN_BASE_URL
+    ACTIVE_TARGET_MODE = "domain"
 
 USER_EMAIL = os.getenv("WEATHER_USER_EMAIL", "admin02@test.com")
 USER_PASSWORD = os.getenv("WEATHER_USER_PASSWORD", "123456789")
