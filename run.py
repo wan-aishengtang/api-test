@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,14 @@ HTML_DIR = REPORT_ROOT / "html"
 ARCHIVE_ROOT = REPORT_ROOT / "archive"
 HISTORY_SOURCE_DIR = HTML_DIR / "history"
 HISTORY_TARGET_DIR = RESULTS_DIR / "history"
+TREND_FILE_NAMES = (
+    "history-trend.json",
+    "duration-trend.json",
+    "retry-trend.json",
+    "categories-trend.json",
+)
+ALLURE_TREND_AXIS_SNIPPET = 'name:t.buildOrder?"#".concat(t.buildOrder):""'
+ALLURE_TREND_AXIS_PATCH = 'name:t.buildLabel?t.buildLabel:t.buildOrder?"#".concat(t.buildOrder):""'
 
 if VENV_SITE_PACKAGES.exists():
     sys.path.insert(0, str(VENV_SITE_PACKAGES))
@@ -58,6 +67,9 @@ def write_environment_file():
     """写入 Allure 环境信息面板。"""
     env_lines = [
         f"base_url={settings.BASE_URL}",
+        f"api_target_mode={settings.ACTIVE_TARGET_MODE}",
+        f"domain_base_url={settings.DEFAULT_DOMAIN_BASE_URL}",
+        f"source_base_url={settings.DEFAULT_SOURCE_BASE_URL}",
         f"user_email={mask_email(settings.USER_EMAIL)}",
         f"admin_email={mask_email(settings.ADMIN_EMAIL)}",
         f"request_timeout={settings.REQUEST_TIMEOUT}",
@@ -147,6 +159,96 @@ def write_categories_file():
     ]
     (RESULTS_DIR / "categories.json").write_text(
         json.dumps(categories_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def extract_report_date(report_name):
+    """从 Allure 报告标题里提取执行日期，统一为 YYYY/MM/DD。"""
+    if not report_name:
+        return ""
+
+    match = re.search(r"(\d{4}[/-]\d{2}[/-]\d{2})", str(report_name))
+    if not match:
+        return ""
+    return match.group(1).replace("-", "/")
+
+
+def build_trend_label(item):
+    """构造趋势横坐标：日期 + 编号。"""
+    report_date = extract_report_date(item.get("reportName"))
+    build_order = item.get("buildOrder")
+    if build_order in (None, ""):
+        return report_date
+
+    order_text = str(build_order).strip()
+    if order_text.startswith("#"):
+        order_text = order_text[1:].strip()
+
+    if report_date:
+        return f"{report_date} #{order_text}"
+    return f"#{order_text}"
+
+
+def patch_trend_json_file(file_path):
+    """给趋势 JSON 增加 buildLabel，供前端显示日期+编号。"""
+    if not file_path.exists():
+        return
+
+    try:
+        payload = json.loads(file_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+
+    if not isinstance(payload, list):
+        return
+
+    changed = False
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        build_label = build_trend_label(item)
+        if build_label and item.get("buildLabel") != build_label:
+            item["buildLabel"] = build_label
+            changed = True
+
+    if changed:
+        file_path.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+
+
+def patch_trend_history_files():
+    """同步修正当前报告和 history 种子里的趋势标签。"""
+    for parent_dir in (HTML_DIR / "widgets", HTML_DIR / "history"):
+        for file_name in TREND_FILE_NAMES:
+            patch_trend_json_file(parent_dir / file_name)
+
+
+def patch_allure_app_js():
+    """补丁 Allure 前端，优先显示 buildLabel。"""
+    app_js_path = HTML_DIR / "app.js"
+    if not app_js_path.exists():
+        return
+
+    try:
+        app_js_text = app_js_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    if ALLURE_TREND_AXIS_PATCH in app_js_text:
+        return
+
+    if ALLURE_TREND_AXIS_SNIPPET not in app_js_text:
+        return
+
+    app_js_path.write_text(
+        app_js_text.replace(
+            ALLURE_TREND_AXIS_SNIPPET,
+            ALLURE_TREND_AXIS_PATCH,
+            1,
+        ),
         encoding="utf-8",
     )
 
@@ -311,6 +413,8 @@ if __name__ == "__main__":
         shell=True,
         check=False,
     )
+    patch_trend_history_files()
+    patch_allure_app_js()
     archive_current_report(run_at)
     write_archive_index()
     raise SystemExit(exit_code)

@@ -87,7 +87,7 @@ jobs:
       - name: Run API tests and generate latest Allure report
         id: run_tests
         env:
-          WEATHER_API_BASE_URL: ""
+          WEATHER_API_BASE_URL: "https://115.120.243.153"
           WEATHER_API_TARGET_MODE: "source"
           WEATHER_SOURCE_BASE_URL: "https://115.120.243.153"
           WEATHER_USER_EMAIL: ${{ secrets.WEATHER_USER_EMAIL }}
@@ -99,6 +99,9 @@ jobs:
         shell: bash
         run: |
           set +e
+          echo "WEATHER_API_BASE_URL=${WEATHER_API_BASE_URL}"
+          echo "WEATHER_API_TARGET_MODE=${WEATHER_API_TARGET_MODE}"
+          echo "WEATHER_SOURCE_BASE_URL=${WEATHER_SOURCE_BASE_URL}"
           python run.py
           TEST_EXIT_CODE=$?
           echo "test_exit_code=${TEST_EXIT_CODE}" >> "$GITHUB_OUTPUT"
