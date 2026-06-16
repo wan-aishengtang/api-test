@@ -87,7 +87,8 @@ jobs:
       - name: Run API tests and generate latest Allure report
         id: run_tests
         env:
-          WEATHER_API_BASE_URL: ${{ secrets.WEATHER_API_BASE_URL }}
+          WEATHER_API_BASE_URL: ""
+          WEATHER_API_TARGET_MODE: "source"
           WEATHER_USER_EMAIL: ${{ secrets.WEATHER_USER_EMAIL }}
           WEATHER_USER_PASSWORD: ${{ secrets.WEATHER_USER_PASSWORD }}
           WEATHER_ADMIN_EMAIL: ${{ secrets.WEATHER_ADMIN_EMAIL }}
